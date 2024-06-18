@@ -1,3 +1,5 @@
+import os
+
 from isaacgym import gymapi
 from isaacgym import gymutil
 from isaacgym import gymtorch
@@ -30,7 +32,7 @@ plane_params.restitution = 0
 gym.add_ground(sim, plane_params)
 
 # load ball asset
-asset_root = "../../assets"
+asset_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../assets")
 asset_file = "urdf/ball.urdf"
 asset = gym.load_asset(sim, asset_root, asset_file)
 
