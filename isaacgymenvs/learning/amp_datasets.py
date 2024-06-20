@@ -31,8 +31,8 @@ from rl_games.common import datasets
 
 
 class AMPDataset(datasets.PPODataset):
-    def __init__(self, batch_size, minibatch_size, is_discrete, is_rnn, device, seq_len):
-        super().__init__(batch_size, minibatch_size, is_discrete, is_rnn, device, seq_len)
+    def __init__(self, batch_size, minibatch_size, is_discrete, is_rnn, device, seq_length):
+        super().__init__(batch_size, minibatch_size, is_discrete, is_rnn, device, seq_length)
         self._idx_buf = torch.randperm(batch_size)
         return
     
