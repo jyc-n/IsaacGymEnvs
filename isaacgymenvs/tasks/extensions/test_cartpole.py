@@ -74,7 +74,16 @@ class TestCartpole(VecTask):
     def pre_physics_step(self, actions):
         # implement pre-physics simulation code here
         #    - e.g. apply actions
-        pass
+        # (512*2)
+        actions_tensor = torch.zeros(
+            self.num_envs * self.num_dof, device=self.device, dtype=torch.float
+        )
+        # set every other element
+        actions_tensor[:: self.num_dof] = (
+            actions.to(self.device).squeeze() * self.max_push_effort
+        )
+        forces = gymtorch.unwrap_tensor(actions_tensor)
+        self.gym.set_dof_actuation_force_tensor(self.sim, forces)
 
     def post_physics_step(self):
         # implement post-physics simulation code here
