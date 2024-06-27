@@ -238,6 +238,9 @@ class HumanoidAMPBase(VecTask):
                 dof_prop = self.gym.get_asset_dof_properties(humanoid_asset)
                 dof_prop["driveMode"] = gymapi.DOF_MODE_POS
                 self.gym.set_actor_dof_properties(env_ptr, handle, dof_prop)
+            
+            # TODO: add additional actors
+            # _build_envs
 
         dof_prop = self.gym.get_actor_dof_properties(env_ptr, handle)
         for j in range(self.num_dof):
@@ -257,6 +260,9 @@ class HumanoidAMPBase(VecTask):
         if (self._pd_control):
             self._build_pd_action_offset_scale()
 
+        return
+    
+    def _build_envs():
         return
 
     def _build_pd_action_offset_scale(self):
