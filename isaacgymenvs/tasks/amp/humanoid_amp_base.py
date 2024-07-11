@@ -94,6 +94,9 @@ class HumanoidAMPBase(VecTask):
         self.gym.refresh_net_contact_force_tensor(self.sim)
 
         self._root_states = gymtorch.wrap_tensor(actor_root_state)
+        num_actors = self.get_num_actors_per_env()
+        self._humanoid_actor_ids = num_actors * torch.arange(self.num_envs, device=self.device, dtype=torch.int32)
+
         self._initial_root_states = self._root_states.clone()
         self._initial_root_states[:, 7:13] = 0
 
@@ -111,11 +114,16 @@ class HumanoidAMPBase(VecTask):
         self._initial_dof_vel = torch.zeros_like(self._dof_vel, device=self.device, dtype=torch.float)
         
         self._rigid_body_state = gymtorch.wrap_tensor(rigid_body_state)
-        self._rigid_body_pos = self._rigid_body_state.view(self.num_envs, self.num_bodies, 13)[..., 0:3]
-        self._rigid_body_rot = self._rigid_body_state.view(self.num_envs, self.num_bodies, 13)[..., 3:7]
-        self._rigid_body_vel = self._rigid_body_state.view(self.num_envs, self.num_bodies, 13)[..., 7:10]
-        self._rigid_body_ang_vel = self._rigid_body_state.view(self.num_envs, self.num_bodies, 13)[..., 10:13]
-        self._contact_forces = gymtorch.wrap_tensor(contact_force_tensor).view(self.num_envs, self.num_bodies, 3)
+        bodies_per_env = self._rigid_body_state.shape[0] // self.num_envs
+        rigid_body_state_reshaped = self._rigid_body_state.view(self.num_envs, bodies_per_env, 13)
+
+        self._rigid_body_pos = rigid_body_state_reshaped[..., :self.num_bodies, 0:3]
+        self._rigid_body_rot = rigid_body_state_reshaped[..., :self.num_bodies, 3:7]
+        self._rigid_body_vel = rigid_body_state_reshaped[..., :self.num_bodies, 7:10]
+        self._rigid_body_ang_vel = rigid_body_state_reshaped[..., :self.num_bodies, 10:13]
+        
+        contact_force_tensor = gymtorch.wrap_tensor(contact_force_tensor)
+        self._contact_forces = contact_force_tensor.view(self.num_envs, bodies_per_env, 3)[..., :self.num_bodies, :]
         
         self._terminate_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         
@@ -129,6 +137,10 @@ class HumanoidAMPBase(VecTask):
 
     def get_action_size(self):
         return NUM_ACTIONS
+    
+    def get_num_actors_per_env(self):
+        num_actors = self._root_states.shape[0] // self.num_envs
+        return num_actors
 
     def create_sim(self):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
@@ -221,28 +233,10 @@ class HumanoidAMPBase(VecTask):
             env_ptr = self.gym.create_env(
                 self.sim, lower, upper, num_per_row
             )
-            contact_filter = 0
-            
-            handle = self.gym.create_actor(env_ptr, humanoid_asset, start_pose, "humanoid", i, contact_filter, 0)
-
-            self.gym.enable_actor_dof_force_sensors(env_ptr, handle)
-
-            for j in range(self.num_bodies):
-                self.gym.set_rigid_body_color(
-                    env_ptr, handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.4706, 0.549, 0.6863))
-
+            self._build_env(i, env_ptr, humanoid_asset)
             self.envs.append(env_ptr)
-            self.humanoid_handles.append(handle)
 
-            if (self._pd_control):
-                dof_prop = self.gym.get_asset_dof_properties(humanoid_asset)
-                dof_prop["driveMode"] = gymapi.DOF_MODE_POS
-                self.gym.set_actor_dof_properties(env_ptr, handle, dof_prop)
-            
-            # TODO: add additional actors
-            # _build_envs
-
-        dof_prop = self.gym.get_actor_dof_properties(env_ptr, handle)
+        dof_prop = self.gym.get_actor_dof_properties(self.envs[0], self.humanoid_handles[0])
         for j in range(self.num_dof):
             if dof_prop['lower'][j] > dof_prop['upper'][j]:
                 self.dof_limits_lower.append(dof_prop['upper'][j])
@@ -254,15 +248,36 @@ class HumanoidAMPBase(VecTask):
         self.dof_limits_lower = to_torch(self.dof_limits_lower, device=self.device)
         self.dof_limits_upper = to_torch(self.dof_limits_upper, device=self.device)
 
-        self._key_body_ids = self._build_key_body_ids_tensor(env_ptr, handle)
-        self._contact_body_ids = self._build_contact_body_ids_tensor(env_ptr, handle)
+        self._key_body_ids = self._build_key_body_ids_tensor(self.envs[0], self.humanoid_handles[0])
+        self._contact_body_ids = self._build_contact_body_ids_tensor(self.envs[0], self.humanoid_handles[0])
         
         if (self._pd_control):
             self._build_pd_action_offset_scale()
 
         return
     
-    def _build_envs():
+    def _build_env(self, env_id, env_ptr, humanoid_asset):
+        collision_group = env_id
+        collision_filter = 0
+        segmentation_id = 0
+
+        start_pose = gymapi.Transform()
+
+        handle = self.gym.create_actor(env_ptr, humanoid_asset, start_pose, "humanoid", collision_group, collision_filter, segmentation_id)
+
+        self.gym.enable_actor_dof_force_sensors(env_ptr, handle)
+
+        for j in range(self.num_bodies):
+            self.gym.set_rigid_body_color(
+                env_ptr, handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.4706, 0.549, 0.6863))
+
+        if (self._pd_control):
+            dof_prop = self.gym.get_asset_dof_properties(humanoid_asset)
+            dof_prop["driveMode"] = gymapi.DOF_MODE_POS
+            self.gym.set_actor_dof_properties(env_ptr, handle, dof_prop)
+
+        self.humanoid_handles.append(handle)
+
         return
 
     def _build_pd_action_offset_scale(self):

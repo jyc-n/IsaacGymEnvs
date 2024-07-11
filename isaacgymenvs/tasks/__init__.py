@@ -47,7 +47,7 @@ from .allegro_hand import AllegroHand
 from .dextreme.allegro_hand_dextreme import AllegroHandDextremeManualDR, AllegroHandDextremeADR
 from .trifinger import Trifinger
 from .extensions.test_cartpole import TestCartpole
-from .extensions.humanoid_amp_heading import HumanoidAMPHeading
+from .extensions.humanoid_amp_location import HumanoidAMPLocation
 
 from .allegro_kuka.allegro_kuka_reorientation import AllegroKukaReorientation
 from .allegro_kuka.allegro_kuka_regrasping import AllegroKukaRegrasping
@@ -114,5 +114,5 @@ isaacgym_task_map = {
     "ShadowHand": ShadowHand,
     "Trifinger": Trifinger,
     "TestCartpole": TestCartpole,
-    "HumanoidAMPHeading": HumanoidAMPHeading,
+    "HumanoidAMPHeading": HumanoidAMPLocation,
 }
