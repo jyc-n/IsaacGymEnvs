@@ -1,5 +1,5 @@
 # used to create the object
-name: HumanoidAMPHeading
+name: HumanoidAMPLocation
 
 physics_engine: ${..physics_engine}
 
@@ -22,7 +22,11 @@ env:
   contactBodies: ["right_foot", "left_foot"]
   terminationHeight: 0.5
   enableEarlyTermination: True
-
+  
+  tarSpeed: 1.0
+  tarChangeStepsMin: 100
+  tarChangeStepsMax: 200
+  tarDistMax: 10.0
   # animation files to learn from
   # these motions should use hyperparameters from HumanoidAMPPPO.yaml
   #motion_file: "amp_humanoid_walk.npy"

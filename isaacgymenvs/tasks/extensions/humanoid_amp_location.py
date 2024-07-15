@@ -80,6 +80,11 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         self._num_amp_obs_steps = cfg["env"]["numAMPObsSteps"]
         assert self._num_amp_obs_steps >= 2
 
+        self._tar_speed = cfg["env"]["tarSpeed"]
+        self._tar_change_steps_min = cfg["env"]["tarChangeStepsMin"]
+        self._tar_change_steps_max = cfg["env"]["tarChangeStepsMax"]
+        self._tar_dist_max = cfg["env"]["tarDistMax"]
+
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
 
@@ -335,6 +340,20 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         super().reset_idx(env_ids)
         self._init_amp_obs(env_ids)
         return
+    
+    def _reset_env_tensors(self, env_ids):
+        env_ids_int32 = self._humanoid_actor_ids[env_ids]
+        self.gym.set_actor_root_state_tensor_indexed(self.sim,
+                                                     gymtorch.unwrap_tensor(self._root_states),
+                                                     gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+        self.gym.set_dof_state_tensor_indexed(self.sim,
+                                              gymtorch.unwrap_tensor(self._dof_state),
+                                              gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+        
+        self.progress_buf[env_ids] = 0
+        self.reset_buf[env_ids] = 0
+        self._terminate_buf[env_ids] = 0
+        return
 
     # same as base
     def _reset_actors(self, env_ids):
@@ -366,7 +385,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
             self.sim,
-            gymtorch.unwrap_tensor(self._initial_root_states),
+            gymtorch.unwrap_tensor(self._initial_humanoid_root_states),
             gymtorch.unwrap_tensor(env_ids_int32),
             len(env_ids_int32),
         )
@@ -484,15 +503,15 @@ class HumanoidAMPLocation(HumanoidAMPBase):
     def _set_env_state(
         self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel
     ):
-        self._root_states[env_ids, 0:3] = root_pos
-        self._root_states[env_ids, 3:7] = root_rot
-        self._root_states[env_ids, 7:10] = root_vel
-        self._root_states[env_ids, 10:13] = root_ang_vel
+        self._humanoid_root_states[env_ids, 0:3] = root_pos
+        self._humanoid_root_states[env_ids, 3:7] = root_rot
+        self._humanoid_root_states[env_ids, 7:10] = root_vel
+        self._humanoid_root_states[env_ids, 10:13] = root_ang_vel
 
         self._dof_pos[env_ids] = dof_pos
         self._dof_vel[env_ids] = dof_vel
 
-        env_ids_int32 = env_ids.to(dtype=torch.int32)
+        env_ids_int32 = self._humanoid_actor_ids[env_ids].to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
             self.sim,
             gymtorch.unwrap_tensor(self._root_states),
@@ -522,7 +541,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
         if env_ids is None:
             self._curr_amp_obs_buf[:] = build_amp_observations(
-                self._root_states,
+                self._humanoid_root_states,
                 self._dof_pos,
                 self._dof_vel,
                 key_body_pos,
@@ -530,7 +549,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
             )
         else:
             self._curr_amp_obs_buf[env_ids] = build_amp_observations(
-                self._root_states[env_ids],
+                self._humanoid_root_states[env_ids],
                 self._dof_pos[env_ids],
                 self._dof_vel[env_ids],
                 key_body_pos[env_ids],

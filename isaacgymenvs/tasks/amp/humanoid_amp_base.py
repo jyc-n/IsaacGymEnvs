@@ -95,10 +95,12 @@ class HumanoidAMPBase(VecTask):
 
         self._root_states = gymtorch.wrap_tensor(actor_root_state)
         num_actors = self.get_num_actors_per_env()
-        self._humanoid_actor_ids = num_actors * torch.arange(self.num_envs, device=self.device, dtype=torch.int32)
 
-        self._initial_root_states = self._root_states.clone()
-        self._initial_root_states[:, 7:13] = 0
+        self._humanoid_root_states = self._root_states.view(self.num_envs, num_actors, actor_root_state.shape[-1])[..., 0, :]
+        self._initial_humanoid_root_states = self._humanoid_root_states.clone()
+        self._initial_humanoid_root_states[:, 7:13] = 0
+
+        self._humanoid_actor_ids = num_actors * torch.arange(self.num_envs, device=self.device, dtype=torch.int32)
 
         # create some wrapper tensors for different slices
         self._dof_state = gymtorch.wrap_tensor(dof_state_tensor)
@@ -157,8 +159,12 @@ class HumanoidAMPBase(VecTask):
 
     def reset_idx(self, env_ids):
         self._reset_actors(env_ids)
+        self._reset_env_tensors(env_ids)
         self._refresh_sim_tensors()
         self._compute_observations(env_ids)
+        return
+
+    def _reset_env_tensors(self, env_ids):
         return
 
     def set_char_color(self, col):
@@ -348,12 +354,12 @@ class HumanoidAMPBase(VecTask):
 
     def _compute_humanoid_obs(self, env_ids=None):
         if (env_ids is None):
-            root_states = self._root_states
+            root_states = self._humanoid_root_states
             dof_pos = self._dof_pos
             dof_vel = self._dof_vel
             key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
         else:
-            root_states = self._root_states[env_ids]
+            root_states = self._humanoid_root_states[env_ids]
             dof_pos = self._dof_pos[env_ids]
             dof_vel = self._dof_vel[env_ids]
             key_body_pos = self._rigid_body_pos[env_ids][:, self._key_body_ids, :]
@@ -368,7 +374,7 @@ class HumanoidAMPBase(VecTask):
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
-                                                     gymtorch.unwrap_tensor(self._initial_root_states),
+                                                     gymtorch.unwrap_tensor(self._initial_humanoid_root_states),
                                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
         self.gym.set_dof_state_tensor_indexed(self.sim,

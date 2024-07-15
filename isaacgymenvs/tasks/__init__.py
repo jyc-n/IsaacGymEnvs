@@ -114,5 +114,5 @@ isaacgym_task_map = {
     "ShadowHand": ShadowHand,
     "Trifinger": Trifinger,
     "TestCartpole": TestCartpole,
-    "HumanoidAMPHeading": HumanoidAMPLocation,
+    "HumanoidAMPLocation": HumanoidAMPLocation,
 }
