@@ -162,7 +162,10 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         return
     
     def _load_marker_asset(self):
-        asset_root = "../../../assets/mjcf/"
+        asset_root = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "../../../assets/mjcf/",
+        )
         asset_file = "location_marker.urdf"
 
         asset_options = gymapi.AssetOptions()
