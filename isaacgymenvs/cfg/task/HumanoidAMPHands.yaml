@@ -23,6 +23,8 @@ env:
   terminationHeight: 0.5
   enableEarlyTermination: True
 
+  enableTaskObs: False
+
   # animation files to learn from
   motion_file: "amp_humanoid_cartwheel.npy"
 

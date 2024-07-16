@@ -43,6 +43,7 @@ from isaacgymenvs.tasks.amp.utils_amp.motion_lib import MotionLib
 from isaacgymenvs.utils.torch_jit_utils import (
     quat_mul,
     to_torch,
+    calc_heading_quat,
     calc_heading_quat_inv,
     quat_to_tan_norm,
     my_quat_rotate,
@@ -132,6 +133,12 @@ class HumanoidAMPLocation(HumanoidAMPBase):
             self._build_marker_state_tensors()
 
         return
+    
+    def get_task_obs_size(self):
+        obs_size = 0
+        if (self._enable_task_obs):
+            obs_size = 2
+        return obs_size
     
     def _build_env(self, env_id, env_ptr, humanoid_asset):
         super()._build_env(env_id, env_ptr, humanoid_asset)
@@ -543,6 +550,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
     def _compute_amp_observations(self, env_ids=None):
         key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
         if env_ids is None:
+            # TODO: why this is duplicated?
             self._curr_amp_obs_buf[:] = build_amp_observations(
                 self._humanoid_root_states,
                 self._dof_pos,
@@ -559,11 +567,45 @@ class HumanoidAMPLocation(HumanoidAMPBase):
                 self._local_root_obs,
             )
         return
+    
+    def _compute_task_obs(self, env_ids=None):
+        if (env_ids is None):
+            root_states = self._humanoid_root_states
+            tar_pos = self._tar_pos
+        else:
+            root_states = self._humanoid_root_states[env_ids]
+            tar_pos = self._tar_pos[env_ids]
+        
+        obs = compute_location_observations(root_states, tar_pos)
+        return obs
+    
+    def _compute_reward(self, actions):
+        root_pos = self._humanoid_root_states[..., 0:3]
+        root_rot = self._humanoid_root_states[..., 3:7]
+        self.rew_buf[:] = compute_location_reward(root_pos, self._prev_root_pos, root_rot,
+                                                 self._tar_pos, self._tar_speed,
+                                                 self.dt)
+        return
 
 
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
+
+@torch.jit.script
+def compute_location_observations(root_states, tar_pos):
+    # type: (Tensor, Tensor) -> Tensor
+    root_pos = root_states[:, 0:3]
+    root_rot = root_states[:, 3:7]
+
+    tar_pos3d = torch.cat([tar_pos, torch.zeros_like(tar_pos[..., 0:1])], dim=-1)
+    heading_rot = calc_heading_quat_inv(root_rot)
+    
+    local_tar_pos = my_quat_rotate(heading_rot, tar_pos3d - root_pos)
+    local_tar_pos = local_tar_pos[..., 0:2]
+
+    obs = local_tar_pos
+    return obs
 
 # same as base
 @torch.jit.script
@@ -620,3 +662,49 @@ def build_amp_observations(root_states, dof_pos, dof_vel, key_body_pos, local_ro
         dim=-1,
     )
     return obs
+
+@torch.jit.script
+def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_speed, dt):
+    # type: (Tensor, Tensor, Tensor, Tensor, float, float) -> Tensor
+    dist_threshold = 0.5
+
+    pos_err_scale = 0.5
+    vel_err_scale = 4.0
+
+    pos_reward_w = 0.5
+    vel_reward_w = 0.4
+    face_reward_w = 0.1
+    
+    pos_diff = tar_pos - root_pos[..., 0:2]
+    pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
+    pos_reward = torch.exp(-pos_err_scale * pos_err)
+
+    tar_dir = tar_pos - root_pos[..., 0:2]
+    tar_dir = torch.nn.functional.normalize(tar_dir, dim=-1)
+    
+    
+    delta_root_pos = root_pos - prev_root_pos
+    root_vel = delta_root_pos / dt
+    tar_dir_speed = torch.sum(tar_dir * root_vel[..., :2], dim=-1)
+    tar_vel_err = tar_speed - tar_dir_speed
+    tar_vel_err = torch.clamp_min(tar_vel_err, 0.0)
+    vel_reward = torch.exp(-vel_err_scale * (tar_vel_err * tar_vel_err))
+    speed_mask = tar_dir_speed <= 0
+    vel_reward[speed_mask] = 0
+
+
+    heading_rot = calc_heading_quat(root_rot)
+    facing_dir = torch.zeros_like(root_pos)
+    facing_dir[..., 0] = 1.0
+    facing_dir = my_quat_rotate(heading_rot, facing_dir)
+    facing_err = torch.sum(tar_dir * facing_dir[..., 0:2], dim=-1)
+    facing_reward = torch.clamp_min(facing_err, 0.0)
+
+
+    dist_mask = pos_err < dist_threshold
+    facing_reward[dist_mask] = 1.0
+    vel_reward[dist_mask] = 1.0
+
+    reward = pos_reward_w * pos_reward + vel_reward_w * vel_reward + face_reward_w * facing_reward
+
+    return reward

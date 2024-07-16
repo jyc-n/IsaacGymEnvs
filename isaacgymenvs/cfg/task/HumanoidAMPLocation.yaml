@@ -9,7 +9,7 @@ env:
   envSpacing: 5
   episodeLength: 300
   cameraFollow: True # if the camera follows humanoid or not
-  enableDebugVis: True
+  enableDebugVis: False
   
   pdControl: True
   powerScale: 1.0
@@ -27,6 +27,7 @@ env:
   tarChangeStepsMin: 100
   tarChangeStepsMax: 200
   tarDistMax: 10.0
+  enableTaskObs: True
   # animation files to learn from
   # these motions should use hyperparameters from HumanoidAMPPPO.yaml
   #motion_file: "amp_humanoid_walk.npy"

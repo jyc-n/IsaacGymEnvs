@@ -40,8 +40,8 @@ from ..base.vec_task import VecTask
 
 DOF_BODY_IDS = [1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14]
 DOF_OFFSETS = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
-NUM_OBS = 13 + 52 + 28 + 12 # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
-NUM_ACTIONS = 28
+# NUM_OBS = 13 + 52 + 28 + 12 # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+# NUM_ACTIONS = 28
 
 
 KEY_BODY_NAMES = ["right_hand", "left_hand", "right_foot", "left_foot"]
@@ -66,6 +66,8 @@ class HumanoidAMPBase(VecTask):
         self._contact_bodies = self.cfg["env"]["contactBodies"]
         self._termination_height = self.cfg["env"]["terminationHeight"]
         self._enable_early_termination = self.cfg["env"]["enableEarlyTermination"]
+
+        self._enable_task_obs = self.cfg["env"]["enableTaskObs"]
 
         self.cfg["env"]["numObservations"] = self.get_obs_size()
         self.cfg["env"]["numActions"] = self.get_action_size()
@@ -135,10 +137,18 @@ class HumanoidAMPBase(VecTask):
         return
 
     def get_obs_size(self):
-        return NUM_OBS
-
+        obs_size = 13 + 52 + 28 + 12 # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+        if (self._enable_task_obs):
+            task_obs_size = self.get_task_obs_size()
+            obs_size += task_obs_size
+        return obs_size
+    
+    def get_task_obs_size(self):
+        return 0
+    
     def get_action_size(self):
-        return NUM_ACTIONS
+        num_actions = 28
+        return num_actions
     
     def get_num_actors_per_env(self):
         num_actors = self._root_states.shape[0] // self.num_envs
@@ -343,7 +353,13 @@ class HumanoidAMPBase(VecTask):
         return
 
     def _compute_observations(self, env_ids=None):
-        obs = self._compute_humanoid_obs(env_ids)
+        humanoid_obs = self._compute_humanoid_obs(env_ids)
+
+        if (self._enable_task_obs):
+            task_obs = self._compute_task_obs(env_ids)
+            obs = torch.cat([humanoid_obs, task_obs], dim=-1)
+        else:
+            obs = humanoid_obs
 
         if (env_ids is None):
             self.obs_buf[:] = obs
@@ -351,6 +367,9 @@ class HumanoidAMPBase(VecTask):
             self.obs_buf[env_ids] = obs
 
         return
+    
+    def _compute_task_obs(self, env_ids=None):
+        return NotImplemented
 
     def _compute_humanoid_obs(self, env_ids=None):
         if (env_ids is None):
