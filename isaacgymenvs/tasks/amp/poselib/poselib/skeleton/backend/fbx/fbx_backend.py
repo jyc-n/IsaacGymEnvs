@@ -39,7 +39,7 @@ import numpy as np
 
 try:
     import fbx
-    import FbxCommon
+    from . import FbxCommon
 except ImportError as e:
     print("Error: FBX library failed to load - importing FBX data will not succeed. Message: {}".format(e))
     print("FBX tools must be installed from https://help.autodesk.com/view/FBX/2020/ENU/?guid=FBX_Developer_Help_scripting_with_python_fbx_installing_python_fbx_html")
@@ -170,7 +170,7 @@ def _get_frame_count(fbx_scene):
     anim_range = anim_stack.GetLocalTimeSpan()
     duration = anim_range.GetDuration()
     fps = duration.GetFrameRate(duration.GetGlobalTimeMode())
-    frame_count = duration.GetFrameCount(True)
+    frame_count = duration.GetFrameCount()
 
     return anim_range, frame_count, fps
 
