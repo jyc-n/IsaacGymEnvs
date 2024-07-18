@@ -27,24 +27,62 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import os
+from pathlib import Path
 import json
 
 from poselib.skeleton.skeleton3d import SkeletonTree, SkeletonState, SkeletonMotion
 from poselib.visualization.common import plot_skeleton_state, plot_skeleton_motion_interactive
 
-# source fbx file path
-fbx_file = "data/01_01_cmu.fbx"
 
-# import fbx file - make sure to provide a valid joint name for root_joint
-motion = SkeletonMotion.from_fbx(
-    fbx_file_path=fbx_file,
-    root_joint="Hips",
-    fps=60
-)
+def interactive_single_clip(fbx_path, fbx_name, root_joint="Hips", fps=60):
+    # source fbx file path
+    fbx_path = "data/CMU_fbx_sub16/"
+    fbx_name = "16_51.fbx"
+    fbx_file = Path(fbx_path) / fbx_name
 
-# save motion in npy format
-motion.to_file("data/01_01_cmu.npy")
+    # import fbx file - make sure to provide a valid joint name for root_joint
+    motion = SkeletonMotion.from_fbx(
+        fbx_file_path=fbx_file.as_posix(),
+        root_joint=root_joint,
+        fps=fps
+    )
 
-# visualize motion
-plot_skeleton_motion_interactive(motion)
+    # save motion in npy format
+    outfile = Path(fbx_path) / (fbx_name.split(".")[0] + ".npy")
+    motion.to_file(outfile.as_posix())
+
+    # visualize motion
+    plot_skeleton_motion_interactive(motion)
+
+    return
+
+
+def batch_convert(fbx_path, root_joint="Hips", fps=60):
+    # source fbx file path
+    fbx_path = "data/CMU_fbx_sub16/"
+
+    all_files = sorted(Path(fbx_path).glob("*.fbx"))
+    
+    for fbx_file in all_files:
+        # import fbx file - make sure to provide a valid joint name for root_joint
+        motion = SkeletonMotion.from_fbx(
+            fbx_file_path=fbx_file.as_posix(),
+            root_joint=root_joint,
+            fps=fps
+        )
+
+        # save motion in npy format
+        fbx_name = fbx_file.name
+        outfile = Path(fbx_path) / (fbx_name.split(".")[0] + ".npy")
+        motion.to_file(outfile.as_posix())
+
+        print(f"{outfile.as_posix()} saved to disk")
+    return
+
+
+if __name__ == "__main__":
+    # speicify path and name
+    # interactive_single_clip("data/CMU_fbx_sub16/", "16_51.fbx")
+    
+    # provide path only
+    batch_convert("data/CMU_fbx_sub16/")
