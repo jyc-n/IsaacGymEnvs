@@ -34,3 +34,4 @@ outputs/
 /isaacgymenvs/wandb
 recorded_frames/
 CMU_fbx_sub16
+CMU_fbx_sub16_AMP

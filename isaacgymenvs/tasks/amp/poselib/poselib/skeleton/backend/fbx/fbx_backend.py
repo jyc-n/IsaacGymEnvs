@@ -39,7 +39,7 @@ import numpy as np
 
 try:
     import fbx
-    from . import FbxCommon
+    import FbxCommon
 except ImportError as e:
     print("Error: FBX library failed to load - importing FBX data will not succeed. Message: {}".format(e))
     print("FBX tools must be installed from https://help.autodesk.com/view/FBX/2020/ENU/?guid=FBX_Developer_Help_scripting_with_python_fbx_installing_python_fbx_html")

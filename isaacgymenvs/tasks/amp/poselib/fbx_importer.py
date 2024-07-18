@@ -36,8 +36,6 @@ from poselib.visualization.common import plot_skeleton_state, plot_skeleton_moti
 
 def interactive_single_clip(fbx_path, fbx_name, root_joint="Hips", fps=60):
     # source fbx file path
-    fbx_path = "data/CMU_fbx_sub16/"
-    fbx_name = "16_51.fbx"
     fbx_file = Path(fbx_path) / fbx_name
 
     # import fbx file - make sure to provide a valid joint name for root_joint
@@ -81,8 +79,9 @@ def batch_convert(fbx_path, root_joint="Hips", fps=60):
 
 
 if __name__ == "__main__":
-    # speicify path and name
-    # interactive_single_clip("data/CMU_fbx_sub16/", "16_51.fbx")
+    # specify path and name. input data location could be different
+    interactive_single_clip("data/CMU_fbx_sub16/", "16_11.fbx")
+    # interactive_single_clip("data/", "07_01_cmu.fbx")
     
     # provide path only
-    batch_convert("data/CMU_fbx_sub16/")
+    # batch_convert("data/CMU_fbx_sub16/")
