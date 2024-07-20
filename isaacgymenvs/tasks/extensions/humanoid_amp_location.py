@@ -61,7 +61,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         Start = 1
         Random = 2
         Hybrid = 3
-    
+
     # same as base
     def __init__(
         self,
@@ -99,7 +99,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
             force_render=force_render,
         )
 
-        motion_file = cfg["env"].get("motion_file", "amp_humanoid_backflip.npy")
+        motion_file = cfg["env"].get("motion_file", "amp_humanoid_walk.npy")
         motion_file_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "../../../assets/amp/motions/" + motion_file,
@@ -123,27 +123,31 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         self._amp_obs_demo_buf = None
 
         # TODO: new, for target position
-        self._tar_change_steps = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
-        self._prev_root_pos = torch.zeros([self.num_envs, 3], device=self.device, dtype=torch.float)
+        self._tar_change_steps = torch.zeros(
+            [self.num_envs], device=self.device, dtype=torch.int64
+        )
+        self._prev_root_pos = torch.zeros(
+            [self.num_envs, 3], device=self.device, dtype=torch.float
+        )
         self._tar_pos = torch.zeros(
             [self.num_envs, 2], device=self.device, dtype=torch.float
         )
 
-        if (not self.headless):
+        if not self.headless:
             self._build_marker_state_tensors()
 
         return
-    
+
     def get_task_obs_size(self):
         obs_size = 0
-        if (self._enable_task_obs):
+        if self._enable_task_obs:
             obs_size = 2
         return obs_size
-    
+
     def _build_env(self, env_id, env_ptr, humanoid_asset):
         super()._build_env(env_id, env_ptr, humanoid_asset)
-        
-        if (not self.headless):
+
+        if not self.headless:
             self._build_marker(env_id, env_ptr)
 
         return
@@ -153,21 +157,31 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         col_filter = 2
         segmentation_id = 0
         default_pose = gymapi.Transform()
-        
-        marker_handle = self.gym.create_actor(env_ptr, self._marker_asset, default_pose, "marker", col_group, col_filter, segmentation_id)
-        self.gym.set_rigid_body_color(env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.8, 0.0, 0.0))
+
+        marker_handle = self.gym.create_actor(
+            env_ptr,
+            self._marker_asset,
+            default_pose,
+            "marker",
+            col_group,
+            col_filter,
+            segmentation_id,
+        )
+        self.gym.set_rigid_body_color(
+            env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.8, 0.0, 0.0)
+        )
         self._marker_handles.append(marker_handle)
 
         return
-    
+
     def _create_envs(self, num_envs, spacing, num_per_row):
-        if (not self.headless):
+        if not self.headless:
             self._marker_handles = []
             self._load_marker_asset()
 
         super()._create_envs(num_envs, spacing, num_per_row)
         return
-    
+
     def _load_marker_asset(self):
         asset_root = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -183,7 +197,9 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         asset_options.fix_base_link = True
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
 
-        self._marker_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
+        self._marker_asset = self.gym.load_asset(
+            self.sim, asset_root, asset_file, asset_options
+        )
 
         return
 
@@ -197,13 +213,13 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         self._marker_actor_ids = self._humanoid_actor_ids + 1
 
         return
-    
+
     def pre_physics_step(self, actions):
         super().pre_physics_step(actions)
 
         self._update_task()
         return
-    
+
     # task-specific update
     def _update_task(self):
         reset_task_mask = self.progress_buf >= self._tar_change_steps
@@ -216,10 +232,17 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         n = len(env_ids)
 
         char_root_pos = self._humanoid_root_states[env_ids, 0:2]
-        rand_pos = self._tar_dist_max * (2.0 * torch.rand([n, 2], device=self.device) - 1.0)
+        rand_pos = self._tar_dist_max * (
+            2.0 * torch.rand([n, 2], device=self.device) - 1.0
+        )
 
-        change_steps = torch.randint(low=self._tar_change_steps_min, high=self._tar_change_steps_max,
-                                     size=(n,), device=self.device, dtype=torch.int64)
+        change_steps = torch.randint(
+            low=self._tar_change_steps_min,
+            high=self._tar_change_steps_max,
+            size=(n,),
+            device=self.device,
+            dtype=torch.int64,
+        )
 
         self._tar_pos[env_ids] = char_root_pos + rand_pos
         self._tar_change_steps[env_ids] = self.progress_buf[env_ids] + change_steps
@@ -267,7 +290,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
             )
 
         return
-    
+
     # TODO: new
     def _update_marker(self):
         self._marker_pos[..., 0:2] = self._tar_pos
@@ -350,16 +373,22 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         super().reset_idx(env_ids)
         self._init_amp_obs(env_ids)
         return
-    
+
     def _reset_env_tensors(self, env_ids):
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
-        self.gym.set_actor_root_state_tensor_indexed(self.sim,
-                                                     gymtorch.unwrap_tensor(self._root_states),
-                                                     gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
-        self.gym.set_dof_state_tensor_indexed(self.sim,
-                                              gymtorch.unwrap_tensor(self._dof_state),
-                                              gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
-        
+        self.gym.set_actor_root_state_tensor_indexed(
+            self.sim,
+            gymtorch.unwrap_tensor(self._root_states),
+            gymtorch.unwrap_tensor(env_ids_int32),
+            len(env_ids_int32),
+        )
+        self.gym.set_dof_state_tensor_indexed(
+            self.sim,
+            gymtorch.unwrap_tensor(self._dof_state),
+            gymtorch.unwrap_tensor(env_ids_int32),
+            len(env_ids_int32),
+        )
+
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 0
         self._terminate_buf[env_ids] = 0
@@ -567,30 +596,36 @@ class HumanoidAMPLocation(HumanoidAMPBase):
                 self._local_root_obs,
             )
         return
-    
+
     def _compute_task_obs(self, env_ids=None):
-        if (env_ids is None):
+        if env_ids is None:
             root_states = self._humanoid_root_states
             tar_pos = self._tar_pos
         else:
             root_states = self._humanoid_root_states[env_ids]
             tar_pos = self._tar_pos[env_ids]
-        
+
         obs = compute_location_observations(root_states, tar_pos)
         return obs
-    
+
     def _compute_reward(self, actions):
         root_pos = self._humanoid_root_states[..., 0:3]
         root_rot = self._humanoid_root_states[..., 3:7]
-        self.rew_buf[:] = compute_location_reward(root_pos, self._prev_root_pos, root_rot,
-                                                 self._tar_pos, self._tar_speed,
-                                                 self.dt)
+        self.rew_buf[:] = compute_location_reward(
+            root_pos,
+            self._prev_root_pos,
+            root_rot,
+            self._tar_pos,
+            self._tar_speed,
+            self.dt,
+        )
         return
 
 
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
+
 
 @torch.jit.script
 def compute_location_observations(root_states, tar_pos):
@@ -600,12 +635,13 @@ def compute_location_observations(root_states, tar_pos):
 
     tar_pos3d = torch.cat([tar_pos, torch.zeros_like(tar_pos[..., 0:1])], dim=-1)
     heading_rot = calc_heading_quat_inv(root_rot)
-    
+
     local_tar_pos = my_quat_rotate(heading_rot, tar_pos3d - root_pos)
     local_tar_pos = local_tar_pos[..., 0:2]
 
     obs = local_tar_pos
     return obs
+
 
 # same as base
 @torch.jit.script
@@ -663,6 +699,7 @@ def build_amp_observations(root_states, dof_pos, dof_vel, key_body_pos, local_ro
     )
     return obs
 
+
 @torch.jit.script
 def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_speed, dt):
     # type: (Tensor, Tensor, Tensor, Tensor, float, float) -> Tensor
@@ -674,15 +711,14 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     pos_reward_w = 0.5
     vel_reward_w = 0.4
     face_reward_w = 0.1
-    
+
     pos_diff = tar_pos - root_pos[..., 0:2]
     pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
     pos_reward = torch.exp(-pos_err_scale * pos_err)
 
     tar_dir = tar_pos - root_pos[..., 0:2]
     tar_dir = torch.nn.functional.normalize(tar_dir, dim=-1)
-    
-    
+
     delta_root_pos = root_pos - prev_root_pos
     root_vel = delta_root_pos / dt
     tar_dir_speed = torch.sum(tar_dir * root_vel[..., :2], dim=-1)
@@ -692,7 +728,6 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     speed_mask = tar_dir_speed <= 0
     vel_reward[speed_mask] = 0
 
-
     heading_rot = calc_heading_quat(root_rot)
     facing_dir = torch.zeros_like(root_pos)
     facing_dir[..., 0] = 1.0
@@ -700,11 +735,14 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     facing_err = torch.sum(tar_dir * facing_dir[..., 0:2], dim=-1)
     facing_reward = torch.clamp_min(facing_err, 0.0)
 
-
     dist_mask = pos_err < dist_threshold
     facing_reward[dist_mask] = 1.0
     vel_reward[dist_mask] = 1.0
 
-    reward = pos_reward_w * pos_reward + vel_reward_w * vel_reward + face_reward_w * facing_reward
+    reward = (
+        pos_reward_w * pos_reward
+        + vel_reward_w * vel_reward
+        + face_reward_w * facing_reward
+    )
 
     return reward
