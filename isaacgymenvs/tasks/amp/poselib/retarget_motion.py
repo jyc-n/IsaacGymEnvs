@@ -203,13 +203,7 @@ def project_joints(motion):
     return new_motion
 
 
-def main():
-    # load retarget config
-    # retarget_data_path = "data/configs/retarget_cmu_to_amp.json"
-    retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp.json"
-    with open(retarget_data_path) as f:
-        retarget_data = json.load(f)
-
+def retarget_sinlge_motion(retarget_data, source_motion_file, target_motion_file, show_motion=False):
     # load and visualize t-pose files
     source_tpose = SkeletonState.from_file(retarget_data["source_tpose"])
     if VISUALIZE:
@@ -220,7 +214,7 @@ def main():
         plot_skeleton_state(target_tpose)
 
     # load and visualize source motion sequence
-    source_motion = SkeletonMotion.from_file(retarget_data["source_motion"])
+    source_motion = SkeletonMotion.from_file(source_motion_file)
     if VISUALIZE:
         plot_skeleton_motion_interactive(source_motion)
 
@@ -272,12 +266,50 @@ def main():
     target_motion = SkeletonMotion.from_skeleton_state(new_sk_state, fps=target_motion.fps)
 
     # save retargeted motion
-    target_motion.to_file(retarget_data["target_motion_path"])
+    target_motion.to_file(target_motion_file)
 
     # visualize retargeted motion
-    plot_skeleton_motion_interactive(target_motion)
+    if show_motion:
+        plot_skeleton_motion_interactive(target_motion)
     
     return
+
+def main():
+    # load retarget config
+    # retarget_data_path = "data/configs/retarget_cmu_to_amp.json"
+    # retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp.json"
+    retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp_batch.json"
+    with open(retarget_data_path) as f:
+        retarget_data = json.load(f)
+
+    from pathlib import Path
+
+    if "batch_source_motion_path" in retarget_data:
+        # retarget a batch of motion files, directory given in the json file
+        all_files = sorted(Path(retarget_data["batch_source_motion_path"]).glob("*.npy"))
+        for file in all_files:
+            p = Path(file)
+            filename = p.name
+            outfile = Path(retarget_data["target_motion_path"]) / (filename.split(".")[0] + "_amp.npy")
+            
+            retarget_sinlge_motion(
+                retarget_data, 
+                p.as_posix(), 
+                outfile.as_posix()
+            )
+            print(f"{outfile.as_posix()} saved to disk")
+    else:
+        # retarget a single motion file, designated in the json file
+        p = Path(retarget_data["source_motion"])
+        filename = p.name
+        outfile = Path(retarget_data["target_motion_path"]) / (filename.split(".")[0] + "_amp.npy")
+        
+        retarget_sinlge_motion(
+            retarget_data, 
+            p.as_posix(), 
+            outfile.as_posix(),
+            show_motion=True
+        )
 
 if __name__ == '__main__':
     main()

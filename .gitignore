@@ -33,5 +33,5 @@ outputs/
 *.hydra*
 /isaacgymenvs/wandb
 recorded_frames/
-CMU_fbx_sub16
-CMU_fbx_sub16_AMP
+CMU_fbx
+CMU_fbx_AMP
