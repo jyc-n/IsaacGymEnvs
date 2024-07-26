@@ -665,11 +665,22 @@ class SkeletonState(Serializable):
         assert (
             r.dim() > 0
         ), "the rotation needs to have at least 1 dimension (dim = {})".format(r.dim)
-        return cls(
-            SkeletonState._to_state_vector(r, t),
-            skeleton_tree=skeleton_tree,
-            is_local=is_local,
-        )
+        state_vector = SkeletonState._to_state_vector(r, t)
+        
+        if state_vector.shape[0] == 1:
+            # state_vector.shape[0] == 1 only happens when there is 1 frame.
+            # this is for extracting a single SkeletonState from a SkeletonMotion
+            return cls(
+                torch.squeeze(state_vector, dim=0),
+                skeleton_tree=skeleton_tree,
+                is_local=is_local,
+            )
+        else:
+            return cls(
+                state_vector,
+                skeleton_tree=skeleton_tree,
+                is_local=is_local,
+            )
 
     @classmethod
     def zero_pose(cls, skeleton_tree):
@@ -1273,7 +1284,7 @@ class SkeletonMotion(SkeletonState):
         )
         return angular_velocity
 
-    def crop(self, start: int, end: int, fps: Optional[int] = None):
+    def crop(self, start: int, end: int, fps: Optional[int] = None, return_skeleton_state=False):
         """
         Crop the motion along its last axis. This is equivalent to performing a slicing on the
         object with [..., start: end: skip_every] where skip_every = old_fps / fps. Note that the
@@ -1298,15 +1309,23 @@ class SkeletonMotion(SkeletonState):
                 "from the original fps: {} => {}".format(old_fps, fps)
             )
         skip_every = old_fps // new_fps
-        return SkeletonMotion.from_skeleton_state(
-          SkeletonState.from_rotation_and_root_translation(
-            skeleton_tree=self.skeleton_tree,
-            t=self.root_translation[start:end:skip_every],
-            r=self.local_rotation[start:end:skip_every],
-            is_local=True
-          ),
-          fps=self.fps
-        )
+        if return_skeleton_state:
+            return SkeletonState.from_rotation_and_root_translation(
+                skeleton_tree=self.skeleton_tree,
+                t=self.root_translation[start:end:skip_every],
+                r=self.local_rotation[start:end:skip_every],
+                is_local=True
+            )
+        else:
+            return SkeletonMotion.from_skeleton_state(
+            SkeletonState.from_rotation_and_root_translation(
+                skeleton_tree=self.skeleton_tree,
+                t=self.root_translation[start:end:skip_every],
+                r=self.local_rotation[start:end:skip_every],
+                is_local=True
+            ),
+            fps=self.fps
+            )
 
     def retarget_to(
         self,

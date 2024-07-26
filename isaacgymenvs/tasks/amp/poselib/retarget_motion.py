@@ -205,6 +205,7 @@ def project_joints(motion):
 
 def main():
     # load retarget config
+    # retarget_data_path = "data/configs/retarget_cmu_to_amp.json"
     retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp.json"
     with open(retarget_data_path) as f:
         retarget_data = json.load(f)
@@ -229,7 +230,7 @@ def main():
 
     # run retargeting
     target_motion = source_motion.retarget_to_by_tpose(
-      joint_mapping=retarget_data["joint_mapping"],
+      joint_mapping=joint_mapping,
       source_tpose=source_tpose,
       target_tpose=target_tpose,
       rotation_to_target_skeleton=rotation_to_target_skeleton,

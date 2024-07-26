@@ -78,10 +78,34 @@ def batch_convert(fbx_path, root_joint="Hips", fps=60):
     return
 
 
+def get_tpose(fbx_path, fbx_name, root_joint="Hips"):
+     # source fbx file path
+    fbx_file = Path(fbx_path) / fbx_name
+
+    # import fbx file - make sure to provide a valid joint name for root_joint
+    motion = SkeletonMotion.from_fbx(
+        fbx_file_path=fbx_file.as_posix(),
+        root_joint=root_joint
+    )
+
+    # save motion in npy format
+    outfile = Path(fbx_path) / (fbx_name.split(".")[0] + "_tpose.npy")
+    tpose = motion.crop(0, 1, fps=None, return_skeleton_state=True)
+    tpose.to_file(outfile.as_posix())
+
+    # visualize motion
+    plot_skeleton_state(tpose)
+
+    return
+
+
 if __name__ == "__main__":
     # specify path and name. input data location could be different
-    interactive_single_clip("data/CMU_fbx_sub16/", "16_11.fbx")
-    # interactive_single_clip("data/", "07_01_cmu.fbx")
-    
+    # interactive_single_clip("data/", "01_01_cmu.fbx")
+    interactive_single_clip("data/CMU_fbx_sub16/", "16_58.fbx", root_joint="BVH:Hips", fps=120)
+
     # provide path only
     # batch_convert("data/CMU_fbx_sub16/")
+    
+    # extra T-pose, assuming the first frame is the T-pose
+    # get_tpose("data/CMU_fbx_sub16/", "16_01.fbx", root_joint="BVH:Hips")
