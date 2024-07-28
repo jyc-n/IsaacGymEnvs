@@ -23,17 +23,17 @@ env:
   terminationHeight: 0.5
   enableEarlyTermination: True
   
-  tarSpeed: 1.0
+  tarSpeed: 4.0
   tarChangeStepsMin: 100
   tarChangeStepsMax: 200
   tarDistMax: 10.0
   enableTaskObs: True
   # animation files to learn from
   # these motions should use hyperparameters from HumanoidAMPPPO.yaml
-  #motion_file: "amp_humanoid_walk.npy"
+  # motion_file: "amp_humanoid_walk.npy"
   # motion_file: "amp_humanoid_run.npy"
   #motion_file: "amp_humanoid_dance.npy"
-  motion_file: "amp_run_walk.yaml"
+  motion_file: "amp_locomotion_CMU_16.yaml"
 
   # these motions should use hyperparameters from HumanoidAMPPPOLowGP.yaml
   #motion_file: "amp_humanoid_hop.npy"

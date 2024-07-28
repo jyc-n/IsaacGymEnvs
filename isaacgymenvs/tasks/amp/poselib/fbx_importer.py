@@ -56,9 +56,6 @@ def interactive_single_clip(fbx_path, fbx_name, root_joint="Hips", fps=60):
 
 
 def batch_convert(fbx_path, root_joint="Hips", fps=60):
-    # source fbx file path
-    fbx_path = "data/CMU_fbx_sub16/"
-
     all_files = sorted(Path(fbx_path).glob("*.fbx"))
     
     for fbx_file in all_files:
@@ -105,7 +102,7 @@ if __name__ == "__main__":
     # interactive_single_clip("data/CMU_fbx/", "16_58.fbx", root_joint="BVH:Hips", fps=120)
 
     # provide path only
-    batch_convert("data/CMU_fbx/", root_joint="BVH:Hips", fps=30)
+    batch_convert("data/CMU_fbx/", root_joint="BVH:Hips", fps=120)
     
     # extra T-pose, assuming the first frame is the T-pose
     # get_tpose("data/CMU_fbx/", "16_01.fbx", root_joint="BVH:Hips")
