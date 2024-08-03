@@ -9,7 +9,7 @@ env:
   envSpacing: 5
   episodeLength: 300
   cameraFollow: True # if the camera follows humanoid or not
-  enableDebugVis: False
+  enableDebugVis: True
   
   pdControl: True
   powerScale: 1.0

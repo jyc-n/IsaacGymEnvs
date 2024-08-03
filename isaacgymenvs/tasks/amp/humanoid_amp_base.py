@@ -72,6 +72,9 @@ class HumanoidAMPBase(VecTask):
         self.cfg["env"]["numObservations"] = self.get_obs_size()
         self.cfg["env"]["numActions"] = self.get_action_size()
 
+        # collision filter, XOR with another actor's filter. 0: always have collision
+        self._humanoid_actor_col_filter = 0
+
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
         
         dt = self.cfg["sim"]["dt"]
@@ -272,14 +275,18 @@ class HumanoidAMPBase(VecTask):
 
         return
     
+    def _set_humanoid_col_filter(self):
+        self._humanoid_actor_col_filter = 0
+        return
+    
     def _build_env(self, env_id, env_ptr, humanoid_asset):
         collision_group = env_id
-        collision_filter = 0
         segmentation_id = 0
 
         start_pose = gymapi.Transform()
 
-        handle = self.gym.create_actor(env_ptr, humanoid_asset, start_pose, "humanoid", collision_group, collision_filter, segmentation_id)
+        self._set_humanoid_col_filter()
+        handle = self.gym.create_actor(env_ptr, humanoid_asset, start_pose, "humanoid", collision_group, self._humanoid_actor_col_filter, segmentation_id)
 
         self.gym.enable_actor_dof_force_sensors(env_ptr, handle)
 
@@ -429,15 +436,15 @@ class HumanoidAMPBase(VecTask):
         
         self.extras["terminate"] = self._terminate_buf
 
-        # debug viz
-        if self.viewer and self.debug_viz:
-            self._update_debug_viz()
-
         return
 
     def render(self):
         if self.viewer and self.camera_follow:
             self._update_camera()
+
+        # debug viz
+        if self.viewer and self.debug_viz:
+            self._update_debug_viz()
 
         super().render()
         return

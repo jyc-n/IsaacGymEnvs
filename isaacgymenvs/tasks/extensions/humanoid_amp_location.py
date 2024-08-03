@@ -296,10 +296,11 @@ class HumanoidAMPLocation(HumanoidAMPBase):
         self._marker_pos[..., 0:2] = self._tar_pos
         self._marker_pos[..., 2] = 0.0
 
+        marker_actor_ids_int32 = self._marker_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
             self.sim,
             gymtorch.unwrap_tensor(self._root_states),
-            gymtorch.unwrap_tensor(self._marker_actor_ids),
+            gymtorch.unwrap_tensor(marker_actor_ids_int32),
             len(self._marker_actor_ids),
         )
         return
@@ -372,10 +373,11 @@ class HumanoidAMPLocation(HumanoidAMPBase):
     def reset_idx(self, env_ids):
         super().reset_idx(env_ids)
         self._init_amp_obs(env_ids)
+        self._reset_task(env_ids)
         return
 
     def _reset_env_tensors(self, env_ids):
-        env_ids_int32 = self._humanoid_actor_ids[env_ids]
+        env_ids_int32 = self._humanoid_actor_ids[env_ids].to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
             self.sim,
             gymtorch.unwrap_tensor(self._root_states),
