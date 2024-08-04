@@ -129,9 +129,13 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         self._prev_root_pos = torch.zeros(
             [self.num_envs, 3], device=self.device, dtype=torch.float
         )
-        # target position (x, y, 0) only
+        # target box center position (x, y, z)
         self._tar_pos = torch.zeros(
-            [self.num_envs, 2], device=self.device, dtype=torch.float
+            [self.num_envs, 3], device=self.device, dtype=torch.float
+        )
+        # box half extents (l/2, w/2, h/2)
+        self._half_extents = torch.zeros(
+            [self.num_envs, 3], device=self.device, dtype=torch.float
         )
 
         self._build_object_state_tensors()
@@ -306,12 +310,12 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         n = len(env_ids)
 
         # randomly generate a new target location near the humanoid
-        char_root_pos = self._humanoid_root_states[env_ids, 0:2]
+        char_root_pos = self._humanoid_root_states[env_ids, 0:3]
         rand_pos = self._tar_dist_max * (
-            2.0 * torch.rand([n, 2], device=self.device) - 1.0
+            2.0 * torch.rand([n, 3], device=self.device) - 1.0
         )
         self._tar_pos[env_ids] = char_root_pos + rand_pos
-        # self._object_states[env_ids, 0:2] = self._tar_pos[env_ids]
+        self._tar_pos[env_ids, 2] = 0.0 #TODO: no need to zero out z
 
         change_steps = torch.randint(
             low=self._tar_change_steps_min,
@@ -322,8 +326,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         )
         self._tar_change_steps[env_ids] = self.progress_buf[env_ids] + change_steps
 
-        self._update_object()
-        self._update_marker()
+        # self._update_object()
+        # self._update_marker()
 
         return
 
@@ -386,11 +390,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         return
 
     def _update_object(self):
-        self._object_pos[..., 0:2] = self._tar_pos
-        self._object_pos[..., 2] = 0.0
-
-        # print("object")
-        # print(self._object_pos)
+        self._object_pos[..., 0:3] = self._tar_pos
 
         object_actor_ids_int32 = self._object_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -402,11 +402,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         return
 
     def _update_marker(self):
-        self._marker_pos[..., 0:2] = self._tar_pos
-        self._marker_pos[..., 2] = 0.5
-        
-        # print("marker")
-        # print(self._marker_pos)
+        self._marker_pos[..., 0:3] = self._tar_pos
 
         marker_actor_ids_int32 = self._marker_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -747,11 +743,11 @@ def compute_location_observations(root_states, tar_pos):
     root_pos = root_states[:, 0:3]
     root_rot = root_states[:, 3:7]
 
-    tar_pos3d = torch.cat([tar_pos, torch.zeros_like(tar_pos[..., 0:1])], dim=-1)
+    # tar_pos3d = torch.cat([tar_pos, torch.zeros_like(tar_pos[..., 0:1])], dim=-1)
     heading_rot = calc_heading_quat_inv(root_rot)
 
-    local_tar_pos = my_quat_rotate(heading_rot, tar_pos3d - root_pos)
-    local_tar_pos = local_tar_pos[..., 0:2]
+    local_tar_pos = my_quat_rotate(heading_rot, tar_pos - root_pos)
+    local_tar_pos = local_tar_pos[..., 0:2] #TODO: no need to zero out z
 
     obs = local_tar_pos
     return obs
@@ -826,11 +822,12 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     vel_reward_w = 0.4
     face_reward_w = 0.1
 
-    pos_diff = tar_pos - root_pos[..., 0:2]
+    pos_diff = tar_pos - root_pos
     pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
     pos_reward = torch.exp(-pos_err_scale * pos_err)
-
-    tar_dir = tar_pos - root_pos[..., 0:2]
+    
+    # only use xy-components to compute direction
+    tar_dir = (tar_pos - root_pos)[..., :2]
     tar_dir = torch.nn.functional.normalize(tar_dir, dim=-1)
 
     delta_root_pos = root_pos - prev_root_pos
