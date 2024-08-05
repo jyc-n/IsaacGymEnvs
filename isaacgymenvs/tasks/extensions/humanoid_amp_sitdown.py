@@ -52,7 +52,7 @@ from isaacgymenvs.utils.torch_jit_utils import (
 
 NUM_AMP_OBS_PER_STEP = (
     13 + 52 + 28 + 12
-)  # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+)  # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos] = 105-D
 
 
 class HumanoidAMPSitdown(HumanoidAMPBase):
@@ -137,6 +137,10 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         self._half_extents = torch.zeros(
             [self.num_envs, 3], device=self.device, dtype=torch.float
         )
+        # object actor scales
+        self._object_actor_scales = torch.ones(
+            [self.num_envs], device=self.device, dtype=torch.float
+        )
 
         self._build_object_state_tensors()
         if not self.headless:
@@ -149,7 +153,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         if self._enable_task_obs:
             obs_size = 2
         return obs_size
-    
+
     def _set_humanoid_col_filter(self):
         self._humanoid_actor_col_filter = 1
         return
@@ -185,7 +189,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         self._marker_handles.append(marker_handle)
 
         return
-    
+
     def _build_object(self, env_id, env_ptr, col_filter):
         col_group = env_id
         segmentation_id = 0
@@ -203,10 +207,14 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             col_filter,
             segmentation_id,
         )
-         
-        # self.gym.set_actor_scale(env_ptr, object_handle, scale)
+
+        # self.gym.set_actor_scale(env_ptr, object_handle, 1.0)
         self.gym.set_rigid_body_color(
-            env_ptr, object_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.357, 0.675, 0.769)
+            env_ptr,
+            object_handle,
+            0,
+            gymapi.MESH_VISUAL,
+            gymapi.Vec3(0.357, 0.675, 0.769),
         )
         self._object_handles.append(object_handle)
 
@@ -243,7 +251,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         )
 
         return
-    
+
     def _load_object_asset(self):
         asset_root = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -262,7 +270,12 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         # self._object_asset = self.gym.load_asset(
         #     self.sim, asset_root, asset_file, asset_options
         # )
-        self._object_asset = self.gym.create_box(self.sim, *[1.0, 1.0, 1.0], asset_options)
+        self._asset_size = 1.0
+        self._object_asset = self.gym.create_box(
+            self.sim,
+            *[0.5 * self._asset_size, 0.5 * self._asset_size, self._asset_size],
+            asset_options,
+        )
 
         return
 
@@ -277,7 +290,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         self._marker_actor_ids = self._object_actor_ids + 1
 
         return
-    
+
     def _build_object_state_tensors(self):
         object_idx = 1
         num_actors = self._root_states.shape[0] // self.num_envs
@@ -285,6 +298,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             self.num_envs, num_actors, self._root_states.shape[-1]
         )[..., object_idx, :]
         self._object_pos = self._object_states[..., :3]
+        self._half_extents[..., 0:3] = (
+            torch.tensor([0.5, 0.5, 1.0]) * 0.5 * self._asset_size
+        )
 
         self._object_actor_ids = self._humanoid_actor_ids + 1
 
@@ -303,11 +319,22 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         if len(rest_env_ids) > 0:
             self._reset_task(rest_env_ids)
 
-        # self._update_object()
         return
 
     def _reset_task(self, env_ids):
         n = len(env_ids)
+
+        # retrieve object actor randomized scales
+        for i in env_ids:
+            env_ptr = self.envs[i]
+            object_handle = self._object_handles[i]
+            self._object_actor_scales[i] = self.gym.get_actor_scale(env_ptr, object_handle)
+        
+        print(self._object_actor_scales)
+
+        coeff = 0.5 * torch.ones_like(self._half_extents[env_ids, :])
+        tmp = self._object_actor_scales[env_ids].unsqueeze(-1)
+        self._half_extents[env_ids, :] = coeff * tmp
 
         # randomly generate a new target location near the humanoid
         char_root_pos = self._humanoid_root_states[env_ids, 0:3]
@@ -315,8 +342,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             2.0 * torch.rand([n, 3], device=self.device) - 1.0
         )
         self._tar_pos[env_ids] = char_root_pos + rand_pos
-        self._tar_pos[env_ids, 2] = 0.0 #TODO: no need to zero out z
+        self._tar_pos[env_ids, 2] = 0.0  # TODO: no need to zero out z
 
+        # step limits
         change_steps = torch.randint(
             low=self._tar_change_steps_min,
             high=self._tar_change_steps_max,
@@ -325,9 +353,6 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             dtype=torch.int64,
         )
         self._tar_change_steps[env_ids] = self.progress_buf[env_ids] + change_steps
-
-        # self._update_object()
-        # self._update_marker()
 
         return
 
@@ -356,27 +381,15 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     # Add lines connecting humanoid root to target
     def _update_debug_viz(self):
-        
-        # print("-------------------")
-        # print("before change")
-        # tmp_root = gymtorch.wrap_tensor(self.gym.acquire_actor_root_state_tensor(self.sim))
-        # print(tmp_root)
-        # print(self._root_states)
-
         self._update_object()
         self._update_marker()
-
-        # print("after change")
-        # print(tmp_root)
-        # print(self._root_states)
 
         color = np.array([[0.0, 1.0, 0.0]], dtype=np.float32)
 
         self.gym.clear_lines(self.viewer)
 
         starts = self._humanoid_root_states[..., 0:3]
-        ends = self._object_pos
-        # ends = self._marker_pos
+        ends = self._marker_pos
 
         verts = torch.cat([starts, ends], dim=-1).cpu().numpy()
 
@@ -390,7 +403,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         return
 
     def _update_object(self):
-        self._object_pos[..., 0:3] = self._tar_pos
+        self._object_pos[..., 0:3] = self._tar_pos # TODO: subtract half extent z to tar_pos
 
         object_actor_ids_int32 = self._object_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -403,6 +416,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     def _update_marker(self):
         self._marker_pos[..., 0:3] = self._tar_pos
+        self._marker_pos[..., 2].add_(self._half_extents[..., 2]) # TODO: add half extent z to tar_pos
 
         marker_actor_ids_int32 = self._marker_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -747,7 +761,7 @@ def compute_location_observations(root_states, tar_pos):
     heading_rot = calc_heading_quat_inv(root_rot)
 
     local_tar_pos = my_quat_rotate(heading_rot, tar_pos - root_pos)
-    local_tar_pos = local_tar_pos[..., 0:2] #TODO: no need to zero out z
+    local_tar_pos = local_tar_pos[..., 0:2]  # TODO: no need to zero out z
 
     obs = local_tar_pos
     return obs
@@ -825,7 +839,7 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     pos_diff = tar_pos - root_pos
     pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
     pos_reward = torch.exp(-pos_err_scale * pos_err)
-    
+
     # only use xy-components to compute direction
     tar_dir = (tar_pos - root_pos)[..., :2]
     tar_dir = torch.nn.functional.normalize(tar_dir, dim=-1)

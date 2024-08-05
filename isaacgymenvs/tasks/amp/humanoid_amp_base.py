@@ -54,6 +54,7 @@ class HumanoidAMPBase(VecTask):
         self._pd_control = self.cfg["env"]["pdControl"]
         self.power_scale = self.cfg["env"]["powerScale"]
         self.randomize = self.cfg["task"]["randomize"]
+        self.randomization_params = self.cfg["task"]["randomization_params"]
 
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
         self.camera_follow = self.cfg["env"].get("cameraFollow", False)
@@ -171,6 +172,9 @@ class HumanoidAMPBase(VecTask):
         return
 
     def reset_idx(self, env_ids):
+        if self.randomize:
+            self.apply_randomizations(self.randomization_params)
+
         self._reset_actors(env_ids)
         self._reset_env_tensors(env_ids)
         self._refresh_sim_tensors()
