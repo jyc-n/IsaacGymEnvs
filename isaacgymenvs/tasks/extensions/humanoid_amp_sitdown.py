@@ -53,7 +53,7 @@ from isaacgymenvs.utils.torch_jit_utils import (
 NUM_AMP_OBS_PER_STEP = (
     13 + 52 + 28 + 12
 )  # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos] = 105-D
-
+NUM_TASK_OBS = 3
 
 class HumanoidAMPSitdown(HumanoidAMPBase):
     class StateInit(Enum):
@@ -122,7 +122,6 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
         self._amp_obs_demo_buf = None
 
-        # TODO: new, for target position
         self._tar_change_steps = torch.zeros(
             [self.num_envs], device=self.device, dtype=torch.int64
         )
@@ -151,7 +150,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
     def get_task_obs_size(self):
         obs_size = 0
         if self._enable_task_obs:
-            obs_size = 2
+            obs_size = NUM_TASK_OBS
         return obs_size
 
     def _set_humanoid_col_filter(self):
@@ -340,7 +339,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             2.0 * torch.rand([n, 3], device=self.device) - 1.0
         )
         self._tar_pos[env_ids] = char_root_pos + rand_pos
-        self._tar_pos[env_ids, 2] = 0.0  # TODO: no need to zero out z
+        self._tar_pos[env_ids, 2].add_(self._half_extents[env_ids, 2])
 
         # step limits
         change_steps = torch.randint(
@@ -401,7 +400,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         return
 
     def _update_object(self):
-        self._object_pos[..., 0:3] = self._tar_pos # TODO: subtract half extent z to tar_pos
+        self._object_pos[..., 0:3] = self._tar_pos
+        self._marker_pos[..., 2].sub_(self._half_extents[..., 2])
 
         object_actor_ids_int32 = self._object_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -414,7 +414,6 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     def _update_marker(self):
         self._marker_pos[..., 0:3] = self._tar_pos
-        self._marker_pos[..., 2].add_(self._half_extents[..., 2]) # TODO: add half extent z to tar_pos
 
         marker_actor_ids_int32 = self._marker_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -759,13 +758,13 @@ def compute_location_observations(root_states, tar_pos):
     heading_rot = calc_heading_quat_inv(root_rot)
 
     local_tar_pos = my_quat_rotate(heading_rot, tar_pos - root_pos)
-    local_tar_pos = local_tar_pos[..., 0:2]  # TODO: no need to zero out z
+    local_tar_pos = local_tar_pos[..., 0:3]
 
     obs = local_tar_pos
     return obs
 
 
-# same as base
+# TODO: currently not used
 @torch.jit.script
 def build_amp_observations(root_states, dof_pos, dof_vel, key_body_pos, local_root_obs):
     # type: (Tensor, Tensor, Tensor, Tensor, bool) -> Tensor
@@ -834,28 +833,30 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     vel_reward_w = 0.4
     face_reward_w = 0.1
 
+    # 3d position error
     pos_diff = tar_pos - root_pos
     pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
     pos_reward = torch.exp(-pos_err_scale * pos_err)
 
-    # only use xy-components to compute direction
-    tar_dir = (tar_pos - root_pos)[..., :2]
+    # 3d target direction to go
+    tar_dir = (tar_pos - root_pos)[..., :3]
     tar_dir = torch.nn.functional.normalize(tar_dir, dim=-1)
 
     delta_root_pos = root_pos - prev_root_pos
     root_vel = delta_root_pos / dt
-    tar_dir_speed = torch.sum(tar_dir * root_vel[..., :2], dim=-1)
+    tar_dir_speed = torch.sum(tar_dir * root_vel[..., :3], dim=-1)
     tar_vel_err = tar_speed - tar_dir_speed
     tar_vel_err = torch.clamp_min(tar_vel_err, 0.0)
     vel_reward = torch.exp(-vel_err_scale * (tar_vel_err * tar_vel_err))
     speed_mask = tar_dir_speed <= 0
     vel_reward[speed_mask] = 0
 
+    # facing direction still only uses xy-plane
     heading_rot = calc_heading_quat(root_rot)
     facing_dir = torch.zeros_like(root_pos)
     facing_dir[..., 0] = 1.0
     facing_dir = my_quat_rotate(heading_rot, facing_dir)
-    facing_err = torch.sum(tar_dir * facing_dir[..., 0:2], dim=-1)
+    facing_err = torch.sum(tar_dir[..., 0:2] * facing_dir[..., 0:2], dim=-1)
     facing_reward = torch.clamp_min(facing_err, 0.0)
 
     dist_mask = pos_err < dist_threshold

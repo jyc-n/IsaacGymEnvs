@@ -53,7 +53,7 @@ from isaacgymenvs.utils.torch_jit_utils import (
 NUM_AMP_OBS_PER_STEP = (
     13 + 52 + 28 + 12
 )  # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
-
+NUM_TASK_OBS = 2
 
 class HumanoidAMPLocation(HumanoidAMPBase):
     class StateInit(Enum):
@@ -141,7 +141,7 @@ class HumanoidAMPLocation(HumanoidAMPBase):
     def get_task_obs_size(self):
         obs_size = 0
         if self._enable_task_obs:
-            obs_size = 2
+            obs_size = NUM_TASK_OBS
         return obs_size
 
     def _build_env(self, env_id, env_ptr, humanoid_asset):
