@@ -329,8 +329,6 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             env_ptr = self.envs[i]
             object_handle = self._object_handles[i]
             self._object_actor_scales[i] = self.gym.get_actor_scale(env_ptr, object_handle)
-        
-        print(self._object_actor_scales)
 
         coeff = 0.5 * torch.ones_like(self._half_extents[env_ids, :])
         tmp = self._object_actor_scales[env_ids].unsqueeze(-1)
