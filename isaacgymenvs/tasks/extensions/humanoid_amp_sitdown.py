@@ -339,7 +339,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             2.0 * torch.rand([n, 3], device=self.device) - 1.0
         )
         self._tar_pos[env_ids] = char_root_pos + rand_pos
-        self._tar_pos[env_ids, 2].add_(self._half_extents[env_ids, 2])
+        self._tar_pos[env_ids, 2] = self._half_extents[env_ids, 2]
 
         # step limits
         change_steps = torch.randint(
@@ -401,7 +401,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     def _update_object(self):
         self._object_pos[..., 0:3] = self._tar_pos
-        self._marker_pos[..., 2].sub_(self._half_extents[..., 2])
+        self._object_pos[..., 2].sub_(self._half_extents[..., 2])
 
         object_actor_ids_int32 = self._object_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
