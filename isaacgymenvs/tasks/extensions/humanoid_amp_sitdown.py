@@ -303,6 +303,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         return
 
     def _reset_task(self, env_ids):
+        print("reset task")
         n = len(env_ids)
 
         # randomly generate a new target location near the humanoid
@@ -389,8 +390,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         self._object_pos[..., 0:2] = self._tar_pos
         self._object_pos[..., 2] = 0.0
 
-        # print("object")
-        # print(self._object_pos)
+        print("object")
+        print(self._object_pos)
 
         object_actor_ids_int32 = self._object_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -404,9 +405,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
     def _update_marker(self):
         self._marker_pos[..., 0:2] = self._tar_pos
         self._marker_pos[..., 2] = 0.5
-        
-        # print("marker")
-        # print(self._marker_pos)
+
+        print("marker")
+        print(self._marker_pos)
 
         marker_actor_ids_int32 = self._marker_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -510,6 +511,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     # same as base
     def _reset_actors(self, env_ids):
+        print("actors reset")
         if self._state_init == HumanoidAMPSitdown.StateInit.Default:
             self._reset_default(env_ids)
         elif (
@@ -532,6 +534,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     # same as base
     def _reset_default(self, env_ids):
+        print("reset to default")
         self._dof_pos[env_ids] = self._initial_dof_pos[env_ids]
         self._dof_vel[env_ids] = self._initial_dof_vel[env_ids]
 
@@ -555,6 +558,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     # same as base
     def _reset_ref_state_init(self, env_ids):
+        print("reset to ref state")
         num_envs = env_ids.shape[0]
         motion_ids = self._motion_lib.sample_motions(num_envs)
 
@@ -591,6 +595,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
     # same as base
     def _reset_hybrid_state_init(self, env_ids):
+        print("reset hybrid")
         num_envs = env_ids.shape[0]
         ref_probs = to_torch(
             np.array([self._hybrid_init_prob] * num_envs), device=self.device
