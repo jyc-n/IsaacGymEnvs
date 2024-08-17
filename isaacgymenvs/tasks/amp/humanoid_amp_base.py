@@ -371,11 +371,6 @@ class HumanoidAMPBase(VecTask):
         self.gym.refresh_force_sensor_tensor(self.sim)
         self.gym.refresh_dof_force_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
-        
-        print("object in _refresh_sim_tensors 2")
-        print(self._object_pos)
-        print("marker in _refresh_sim_tensors 2")
-        print(self._marker_pos)
         return
 
     def _compute_observations(self, env_ids=None):

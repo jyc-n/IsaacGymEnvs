@@ -153,11 +153,16 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
     def _build_env(self, env_id, env_ptr, humanoid_asset):
         super()._build_env(env_id, env_ptr, humanoid_asset)
 
+        self._object_actor_ids = []
+        self._marker_actor_ids = []
+
         # Note: object will collide with humanoid if (object_filter XOR humanoid_filter) = 1
         self._build_object(env_id, env_ptr, col_filter=1)
+        self._object_actor_ids = to_torch(self._object_actor_ids, dtype=torch.long, device=self.device)
 
         if not self.headless:
             self._build_marker(env_id, env_ptr, col_filter=1)
+            self._marker_actor_ids = to_torch(self._marker_actor_ids, dtype=torch.long, device=self.device)
 
         return
 
@@ -175,6 +180,10 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             col_filter,
             segmentation_id,
         )
+
+        marker_idx = self.gym.get_actor_index(env_ptr, marker_handle, gymapi.DOMAIN_SIM)
+        self._marker_actor_ids.append(marker_idx)
+
         self.gym.set_rigid_body_color(
             env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.8, 0.0, 0.0)
         )
@@ -199,6 +208,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             col_filter,
             segmentation_id,
         )
+
+        object_idx = self.gym.get_actor_index(env_ptr, object_handle, gymapi.DOMAIN_SIM)
+        self._object_actor_ids.append(object_idx)
          
         # self.gym.set_actor_scale(env_ptr, object_handle, scale)
         self.gym.set_rigid_body_color(
@@ -258,31 +270,33 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         # self._object_asset = self.gym.load_asset(
         #     self.sim, asset_root, asset_file, asset_options
         # )
-        self._object_asset = self.gym.create_box(self.sim, *[1.0, 1.0, 1.0], asset_options)
+        self._object_asset = self.gym.create_box(self.sim, 1.0, 1.0, 1.0, asset_options)
 
         return
 
     def _build_marker_state_tensors(self):
-        marker_idx = 2
-        num_actors = self._root_states.shape[0] // self.num_envs
-        self._marker_states = self._root_states.view(
-            self.num_envs, num_actors, self._root_states.shape[-1]
-        )[..., marker_idx, :]
+        # marker_idx = 2
+        # num_actors = self._root_states.shape[0] // self.num_envs
+        # self._marker_states = self._root_states.view(
+        #     self.num_envs, num_actors, self._root_states.shape[-1]
+        # )[..., marker_idx, :]
+        self._marker_states = self._root_states[self._marker_actor_ids, :]
         self._marker_pos = self._marker_states[..., :3]
 
-        self._marker_actor_ids = self._object_actor_ids + 1
+        # self._marker_actor_ids = self._object_actor_ids + 1
 
         return
     
     def _build_object_state_tensors(self):
-        object_idx = 1
-        num_actors = self._root_states.shape[0] // self.num_envs
-        self._object_states = self._root_states.view(
-            self.num_envs, num_actors, self._root_states.shape[-1]
-        )[..., object_idx, :]
+        # object_idx = 1
+        # num_actors = self._root_states.shape[0] // self.num_envs
+        # self._object_states = self._root_states.view(
+        #     self.num_envs, num_actors, self._root_states.shape[-1]
+        # )[..., object_idx, :]
+        self._object_states = self._root_states[self._object_actor_ids, :]
         self._object_pos = self._object_states[..., :3]
 
-        self._object_actor_ids = self._humanoid_actor_ids + 1
+        # self._object_actor_ids = self._humanoid_actor_ids + 1
 
         return
 
@@ -300,6 +314,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             self._reset_task(rest_env_ids)
 
         # self._update_object()
+        # self._update_marker()
         return
 
     def _reset_task(self, env_ids):
