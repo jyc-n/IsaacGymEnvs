@@ -135,9 +135,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         )
 
         offset = 1
-        offset = self._build_object_state_tensors(offset)
         if not self.headless:
             offset = self._build_marker_state_tensors(offset)
+        offset = self._build_object_state_tensors(offset)
 
         return
 
@@ -155,8 +155,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         super()._build_env(env_id, env_ptr, humanoid_asset)
 
         # Note: object will collide with humanoid if (object_filter XOR humanoid_filter) = 1
+        # TODO: the handle are also ordered. should be the same order as the actor ids
         self._build_object(env_id, env_ptr, col_filter=1)
-
         if not self.headless:
             self._build_marker(env_id, env_ptr, col_filter=1)
 
@@ -303,7 +303,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
     def pre_physics_step(self, actions):
         super().pre_physics_step(actions)
 
-        self._update_task()
+        # self._update_task()
         return
 
     # task-specific update
@@ -311,6 +311,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         reset_task_mask = self.progress_buf >= self._tar_change_steps
         rest_env_ids = reset_task_mask.nonzero(as_tuple=False).flatten()
         if len(rest_env_ids) > 0:
+            print("do reset!!!")
             self._reset_task(rest_env_ids)
 
         # self._update_object()
@@ -338,8 +339,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         )
         self._tar_change_steps[env_ids] = self.progress_buf[env_ids] + change_steps
 
-        self._update_object()
-        self._update_marker()
+        self._update_object(env_ids)
+        self._update_marker(env_ids)
 
         return
 
@@ -374,8 +375,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         # print(tmp_root)
         # print(self._root_states)
 
-        self._update_object()
-        self._update_marker()
+        # self._update_object()
+        # self._update_marker()
 
         # print("after change")
         # print(tmp_root)
@@ -400,7 +401,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
         return
 
-    def _update_object(self):
+    def _update_object(self, env_ids):
         self._object_pos[..., 0:2] = self._tar_pos
         self._object_pos[..., 2] = 0.0
 
@@ -416,7 +417,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         )
         return
 
-    def _update_marker(self):
+    def _update_marker(self, env_ids):
         self._marker_pos[..., 0:2] = self._tar_pos
         self._marker_pos[..., 2] = 0.5
 
