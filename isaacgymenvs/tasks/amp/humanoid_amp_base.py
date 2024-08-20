@@ -350,22 +350,8 @@ class HumanoidAMPBase(VecTask):
         return
 
     def _refresh_sim_tensors(self):
-        print("refresh sim tensors")
-
-        self.gym.refresh_dof_state_tensor(self.sim)
-
-        print("object in _refresh_sim_tensors 0")
-        print(self._object_pos)
-        # print("marker in _refresh_sim_tensors 0")
-        # print(self._marker_pos)
-        
+        self.gym.refresh_dof_state_tensor(self.sim)        
         self.gym.refresh_actor_root_state_tensor(self.sim)
-
-        print("object in _refresh_sim_tensors 1")
-        print(self._object_pos)
-        # print("marker in _refresh_sim_tensors 1")
-        # print(self._marker_pos)
-
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         self.gym.refresh_force_sensor_tensor(self.sim)
