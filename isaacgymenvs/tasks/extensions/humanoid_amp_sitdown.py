@@ -134,9 +134,10 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             [self.num_envs, 2], device=self.device, dtype=torch.float
         )
 
+        # actor id offset
         offset = 1
-        if not self.headless:
-            offset = self._build_marker_state_tensors(offset)
+        # if not self.headless:
+        #     offset = self._build_marker_state_tensors(offset)
         offset = self._build_object_state_tensors(offset)
 
         return
@@ -156,9 +157,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
         # Note: object will collide with humanoid if (object_filter XOR humanoid_filter) = 1
         # TODO: the handle are also ordered. should be the same order as the actor ids
+        # if not self.headless:
+        #     self._build_marker(env_id, env_ptr, col_filter=1)
         self._build_object(env_id, env_ptr, col_filter=1)
-        if not self.headless:
-            self._build_marker(env_id, env_ptr, col_filter=1)
 
         return
 
@@ -279,8 +280,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
         self._marker_actor_ids = self._humanoid_actor_ids + offset
 
-        assert self._marker_pos.storage().data_ptr() == self._marker_states.storage().data_ptr()
-        assert self._marker_pos.storage().data_ptr() == self._root_states.storage().data_ptr()
+        # assert self._marker_pos.storage().data_ptr() == self._marker_states.storage().data_ptr()
+        # assert self._marker_pos.storage().data_ptr() == self._root_states.storage().data_ptr()
 
         return offset + 1
 
@@ -295,8 +296,8 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
         self._object_actor_ids = self._humanoid_actor_ids + offset
 
-        assert self._object_pos.storage().data_ptr() == self._object_states.storage().data_ptr()
-        assert self._object_pos.storage().data_ptr() == self._root_states.storage().data_ptr()
+        # assert self._object_pos.storage().data_ptr() == self._object_states.storage().data_ptr()
+        # assert self._object_pos.storage().data_ptr() == self._root_states.storage().data_ptr()
 
         return offset + 1
 
@@ -340,7 +341,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         self._tar_change_steps[env_ids] = self.progress_buf[env_ids] + change_steps
 
         self._update_object(env_ids)
-        self._update_marker(env_ids)
+        # self._update_marker(env_ids)
 
         return
 
@@ -541,9 +542,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
                 str(self._state_init)
             )
 
-        self.progress_buf[env_ids] = 0
-        self.reset_buf[env_ids] = 0
-        self._terminate_buf[env_ids] = 0
+        # self.progress_buf[env_ids] = 0
+        # self.reset_buf[env_ids] = 0
+        # self._terminate_buf[env_ids] = 0
 
         return
 
