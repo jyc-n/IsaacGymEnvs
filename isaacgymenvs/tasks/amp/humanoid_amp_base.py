@@ -354,7 +354,7 @@ class HumanoidAMPBase(VecTask):
         return
 
     def _refresh_sim_tensors(self):
-        self.gym.refresh_dof_state_tensor(self.sim)
+        self.gym.refresh_dof_state_tensor(self.sim)        
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
@@ -399,6 +399,7 @@ class HumanoidAMPBase(VecTask):
         return obs
 
     def _reset_actors(self, env_ids):
+        # Not used in AMP task examples
         self._dof_pos[env_ids] = self._initial_dof_pos[env_ids]
         self._dof_vel[env_ids] = self._initial_dof_vel[env_ids]
 
