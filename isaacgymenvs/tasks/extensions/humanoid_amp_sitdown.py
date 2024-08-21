@@ -292,8 +292,14 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         # self._object_asset = self.gym.load_asset(
         #     self.sim, asset_root, asset_file, asset_options
         # )
-        self._object_asset = self.gym.create_box(self.sim, 1.0, 1.0, 1.0, asset_options)
         self._asset_size = 1.0
+        self._object_asset = self.gym.create_box(
+            self.sim,
+            self._asset_size * 0.5,
+            self._asset_size * 0.5,
+            self._asset_size,
+            asset_options,
+        )
 
         return
 
