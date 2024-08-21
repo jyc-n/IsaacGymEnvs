@@ -55,6 +55,7 @@ NUM_AMP_OBS_PER_STEP = (
 )  # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos] = 105-D
 NUM_TASK_OBS = 3
 
+
 class HumanoidAMPSitdown(HumanoidAMPBase):
     class StateInit(Enum):
         Default = 0
@@ -141,6 +142,11 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
             [self.num_envs], device=self.device, dtype=torch.float
         )
 
+        sit_body_name = cfg["env"]["sitBodyNames"]
+        self._sit_body_ids = self._build_sit_body_ids_tensor(
+            self.envs[0], self.humanoid_handles[0], sit_body_name
+        )
+
         # actor id offset
         offset = 1
         # if not self.headless:
@@ -154,16 +160,15 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         if self._enable_task_obs:
             obs_size = NUM_TASK_OBS
         return obs_size
-    
+
     def _set_humanoid_col_filter(self):
-        self._humanoid_actor_col_filter = 1
+        self._humanoid_actor_col_filter = 0
         return
 
     def _build_env(self, env_id, env_ptr, humanoid_asset):
         super()._build_env(env_id, env_ptr, humanoid_asset)
 
         # Note: object will collide with humanoid if (object_filter XOR humanoid_filter) = 1
-        # TODO: the handle are also ordered. should be the same order as the actor ids
         # if not self.headless:
         #     self._build_marker(env_id, env_ptr, col_filter=1)
         self._build_object(env_id, env_ptr, col_filter=1)
@@ -212,11 +217,30 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
 
         # self.gym.set_actor_scale(env_ptr, object_handle, scale)
         self.gym.set_rigid_body_color(
-            env_ptr, object_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.357, 0.675, 0.769)
+            env_ptr,
+            object_handle,
+            0,
+            gymapi.MESH_VISUAL,
+            gymapi.Vec3(0.357, 0.675, 0.769),
         )
         self._object_handles.append(object_handle)
 
         return
+
+    def _build_sit_body_ids_tensor(self, env_ptr, actor_handle, body_names):
+        env_ptr = self.envs[0]
+        actor_handle = self.humanoid_handles[0]
+        body_ids = []
+
+        for body_name in body_names:
+            body_id = self.gym.find_actor_rigid_body_handle(
+                env_ptr, actor_handle, body_name
+            )
+            assert body_id != -1
+            body_ids.append(body_id)
+
+        body_ids = to_torch(body_ids, device=self.device, dtype=torch.long)
+        return body_ids
 
     def _create_envs(self, num_envs, spacing, num_per_row):
         if not self.headless:
@@ -249,7 +273,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         )
 
         return
-    
+
     def _load_object_asset(self):
         asset_root = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -276,7 +300,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
     def _build_marker_state_tensors(self, offset):
         self._marker_idx = offset
         num_actors = self._root_states.shape[0] // self.num_envs
-        
+
         self._marker_states = self._root_states.view(
             self.num_envs, num_actors, self._root_states.shape[-1]
         )[..., self._marker_idx, :]
@@ -292,7 +316,7 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
     def _build_object_state_tensors(self, offset):
         self._object_idx = offset
         num_actors = self._root_states.shape[0] // self.num_envs
-        
+
         self._object_states = self._root_states.view(
             self.num_envs, num_actors, self._root_states.shape[-1]
         )[..., self._object_idx, :]
@@ -331,7 +355,9 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         for i in env_ids:
             env_ptr = self.envs[i]
             object_handle = self._object_handles[i]
-            self._object_actor_scales[i] = self.gym.get_actor_scale(env_ptr, object_handle)
+            self._object_actor_scales[i] = self.gym.get_actor_scale(
+                env_ptr, object_handle
+            )
 
         coeff = 0.5 * torch.ones_like(self._half_extents[env_ids, :])
         tmp = self._object_actor_scales[env_ids].unsqueeze(-1)
@@ -397,8 +423,10 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         return
 
     def _update_object(self, env_ids):
-        self._object_pos[..., 0:3] = self._tar_pos
-        self._object_pos[..., 2].sub_(self._half_extents[..., 2])
+        self._object_pos[env_ids, 0:3] = self._tar_pos[env_ids, :]
+        self._object_pos[env_ids, 2] = torch.sub(
+            self._object_pos[env_ids, 2], self._half_extents[env_ids, 2]
+        )
 
         object_actor_ids_int32 = self._object_actor_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(
@@ -739,6 +767,20 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         )
         return
 
+    def _compute_reset(self):
+        self.reset_buf[:], self._terminate_buf[:] = compute_humanoid_reset(
+            self.reset_buf,
+            self.progress_buf,
+            self._contact_forces,
+            self._contact_body_ids,
+            self._rigid_body_pos,
+            self._sit_body_ids,
+            self.max_episode_length,
+            self._enable_early_termination,
+            self._termination_height,
+        )
+        return
+
 
 #####################################################################
 ###=========================jit functions=========================###
@@ -867,3 +909,45 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     )
 
     return reward
+
+
+@torch.jit.script
+def compute_humanoid_reset(
+    reset_buf,
+    progress_buf,
+    contact_buf,
+    contact_body_ids,
+    rigid_body_pos,
+    sit_body_ids,
+    max_episode_length,
+    enable_early_termination,
+    termination_height,
+):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, float, bool, float) -> Tuple[Tensor, Tensor]
+    terminated = torch.zeros_like(reset_buf)
+
+    if enable_early_termination:
+        masked_contact_buf = contact_buf.clone()
+        masked_contact_buf[:, contact_body_ids, :] = 0
+        masked_contact_buf[:, sit_body_ids, :] = 0
+
+        fall_contact = torch.any(masked_contact_buf > 0.1, dim=-1)
+        fall_contact = torch.any(fall_contact, dim=-1)
+
+        body_height = rigid_body_pos[..., 2]
+        fall_height = body_height < termination_height
+        fall_height[:, contact_body_ids] = False
+        fall_height = torch.any(fall_height, dim=-1)
+
+        has_fallen = torch.logical_and(fall_contact, fall_height)
+
+        # first timestep can sometimes still have nonzero contact forces
+        # so only check after first couple of steps
+        has_fallen *= progress_buf > 1
+        terminated = torch.where(has_fallen, torch.ones_like(reset_buf), terminated)
+
+    reset = torch.where(
+        progress_buf >= max_episode_length - 1, torch.ones_like(reset_buf), terminated
+    )
+
+    return reset, terminated

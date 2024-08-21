@@ -20,13 +20,14 @@ env:
 
   localRootObs: False
   contactBodies: ["right_foot", "left_foot"]
-  terminationHeight: 0.2
+  sitBodyNames: ["pelvis", "left_thigh", "right_thigh", "left_shin", "right_shin"]
+  terminationHeight: 0.15
   enableEarlyTermination: True
   
   tarSpeed: 4.0
   tarChangeStepsMin: 100
   tarChangeStepsMax: 200
-  tarDistMax: 2.0
+  tarDistMax: 10.0
   enableTaskObs: True
   # animation files to learn from
   # these motions should use hyperparameters from HumanoidAMPPPO.yaml

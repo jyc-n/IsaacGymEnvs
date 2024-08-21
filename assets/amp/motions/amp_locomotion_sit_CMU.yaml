@@ -52,9 +52,9 @@ motions: [
   {weight: 1.0, file: "CMU_fbx_AMP/16_57_amp.npy"},
   {weight: 1.0, file: "CMU_fbx_AMP/16_58_amp.npy"},
 
-  {weight: 16.0, file: "CMU_fbx_AMP/75_17_amp.npy"},
-  {weight: 16.0, file: "CMU_fbx_AMP/75_18_amp.npy"},
-  {weight: 16.0, file: "CMU_fbx_AMP/75_19_amp.npy"},
+  {weight: 4.0, file: "CMU_fbx_AMP/75_17_amp.npy"},
+  {weight: 4.0, file: "CMU_fbx_AMP/75_18_amp.npy"},
+  {weight: 4.0, file: "CMU_fbx_AMP/75_19_amp.npy"},
 ]
 
   
