@@ -1,0 +1,36 @@
+motions: [
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/locomotion_back_walking_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/locomotion_random_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/locomotion_side_stepping_amp.npy"},
+
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/run_back_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/run_circular_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/run_random_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/run_side_amp.npy"},
+
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo001_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo002_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo003_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo004_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo005_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo006_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo007_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo008_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo009_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo010_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo011_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo012_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo013_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo014_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo015_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo016_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo017_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo018_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo019_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo_sit2sit001_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo_sit2sit002_amp.npy"},
+  {weight: 1.0, file: "external_data/SAMP_fbx_AMP/chair_mo_sit2sit_amp.npy"},
+]
+
+  
