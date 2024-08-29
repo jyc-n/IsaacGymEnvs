@@ -1,6 +1,6 @@
 {
-    "source_motion": "data/CMU_fbx/75/75_17.npy",
-    "target_motion_path": "data/CMU_fbx_AMP/",
+    "source_motion": "data/external_data/armchair001.npy",
+    "target_motion_path": "data/external_data/SAMP_fbx_AMP/",
     "source_tpose": "data/cmu_fbx_tpose.npy",
     "target_tpose": "data/amp_humanoid_tpose.npy",
     "joint_mapping": {

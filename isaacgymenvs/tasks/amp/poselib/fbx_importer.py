@@ -99,11 +99,11 @@ def get_tpose(fbx_path, fbx_name, root_joint="Hips"):
 if __name__ == "__main__":
     # specify path and name. input data location could be different
     # interactive_single_clip("data/", "01_01_cmu.fbx")
-    # interactive_single_clip("data/CMU_fbx/", "16_58.fbx", root_joint="BVH:Hips", fps=120)
-    # interactive_single_clip("data/CMU_fbx/75", "75_19.fbx", root_joint="BVH:Hips", fps=120)
+    # interactive_single_clip("data/external_data/SAMP_fbx/", "armchair001.fbx", root_joint="BVH:Hips", fps=30)
+    # interactive_single_clip("data/external_data/CMU_fbx/75", "75_19.fbx", root_joint="BVH:Hips", fps=120)
 
     # provide path only
-    batch_convert("data/CMU_fbx/75", root_joint="BVH:Hips", fps=120)
+    batch_convert("data/external_data/SAMP_fbx", root_joint="BVH:Hips", fps=30)
     
     # extra T-pose, assuming the first frame is the T-pose
     # get_tpose("data/CMU_fbx/", "16_01.fbx", root_joint="BVH:Hips")

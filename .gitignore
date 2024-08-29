@@ -33,5 +33,4 @@ outputs/
 *.hydra*
 /isaacgymenvs/wandb
 recorded_frames/
-CMU_fbx
-CMU_fbx_AMP
+external_data/
