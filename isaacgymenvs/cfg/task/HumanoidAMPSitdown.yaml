@@ -24,7 +24,7 @@ env:
   terminationHeight: 0.15
   enableEarlyTermination: True
   
-  tarSpeed: 4.0
+  tarSpeed: 1.5
   tarChangeStepsMin: 100
   tarChangeStepsMax: 200
   tarDistMax: 10.0

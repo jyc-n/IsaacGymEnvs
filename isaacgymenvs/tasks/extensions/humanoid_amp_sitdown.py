@@ -871,22 +871,27 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     # type: (Tensor, Tensor, Tensor, Tensor, float, float) -> Tensor
     dist_threshold = 0.5
 
-    pos_err_scale = 0.5
-    vel_err_scale = 4.0
+    w_near = 0.7
+    w_far = 0.3
+
+    pos_err_scale_far = 0.5
+    pos_err_scale_near = 10.0
+    vel_err_scale = 2.0
 
     pos_reward_w = 0.5
-    vel_reward_w = 0.4
-    face_reward_w = 0.1
+    vel_reward_w = 0.5
 
-    # 3d position error
+    # 3d squared position error: ||x_tar - x_root||^2
     pos_diff = tar_pos - root_pos
     pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
-    pos_reward = torch.exp(-pos_err_scale * pos_err)
+    pos_reward = torch.exp(-pos_err_scale_far * pos_err)
 
-    # 3d target direction to go
+    # target direction to go (x-y plane only)
     tar_dir = (tar_pos - root_pos)[..., :3]
+    tar_dir[..., 2] = 0.0
     tar_dir = torch.nn.functional.normalize(tar_dir, dim=-1)
 
+    # 3d squared speed error: ||v_tar - d_tar \cdot v_root||^2
     delta_root_pos = root_pos - prev_root_pos
     root_vel = delta_root_pos / dt
     tar_dir_speed = torch.sum(tar_dir * root_vel[..., :3], dim=-1)
@@ -896,23 +901,13 @@ def compute_location_reward(root_pos, prev_root_pos, root_rot, tar_pos, tar_spee
     speed_mask = tar_dir_speed <= 0
     vel_reward[speed_mask] = 0
 
-    # facing direction still only uses xy-plane
-    heading_rot = calc_heading_quat(root_rot)
-    facing_dir = torch.zeros_like(root_pos)
-    facing_dir[..., 0] = 1.0
-    facing_dir = my_quat_rotate(heading_rot, facing_dir)
-    facing_err = torch.sum(tar_dir[..., 0:2] * facing_dir[..., 0:2], dim=-1)
-    facing_reward = torch.clamp_min(facing_err, 0.0)
+    r_far = pos_reward_w * pos_reward + vel_reward_w * vel_reward   
+    r_near = torch.exp(-pos_err_scale_near * pos_err)
 
     dist_mask = pos_err < dist_threshold
-    facing_reward[dist_mask] = 1.0
-    vel_reward[dist_mask] = 1.0
+    r_near[dist_mask] = 1.0
 
-    reward = (
-        pos_reward_w * pos_reward
-        + vel_reward_w * vel_reward
-        + face_reward_w * facing_reward
-    )
+    reward = w_far * r_far + w_near * r_near
 
     return reward
 
