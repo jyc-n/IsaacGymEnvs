@@ -59,11 +59,11 @@ params:
     normalize_advantage: True
     gamma: 0.99
     tau: 0.95
-    learning_rate: 5e-5
+    learning_rate: 2e-5
     lr_schedule: constant
     kl_threshold: 0.008
     score_to_win: 20000
-    max_epochs: ${resolve_default:10000,${....max_iterations}}
+    max_epochs: ${resolve_default:20000,${....max_iterations}}
     save_best_after: 100
     save_frequency: 50
     print_stats: True
@@ -71,8 +71,8 @@ params:
     entropy_coef: 0.0
     truncate_grads: False
     e_clip: 0.2
-    horizon_length: 16
-    minibatch_size: 32768
+    horizon_length: 32
+    minibatch_size: 16384
     mini_epochs: 6
     critic_coef: 5
     clip_value: False
