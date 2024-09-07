@@ -761,16 +761,17 @@ class HumanoidAMPSitdown(HumanoidAMPBase):
         return obs
 
     def _compute_reward(self, actions):
-        root_pos = self._humanoid_root_states[..., 0:3]
-        root_rot = self._humanoid_root_states[..., 3:7]
-        self.rew_buf[:] = compute_location_reward(
-            root_pos,
-            self._prev_root_pos,
-            root_rot,
-            self._tar_pos,
-            self._tar_speed,
-            self.dt,
-        )
+        super()._compute_reward(actions)
+        # root_pos = self._humanoid_root_states[..., 0:3]
+        # root_rot = self._humanoid_root_states[..., 3:7]
+        # self.rew_buf[:] = compute_location_reward(
+        #     root_pos,
+        #     self._prev_root_pos,
+        #     root_rot,
+        #     self._tar_pos,
+        #     self._tar_speed,
+        #     self.dt,
+        # )
         return
 
     def _compute_reset(self):

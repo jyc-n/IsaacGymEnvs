@@ -277,8 +277,8 @@ def retarget_sinlge_motion(retarget_data, source_motion_file, target_motion_file
 def main():
     # load retarget config
     # retarget_data_path = "data/configs/retarget_cmu_to_amp.json"
-    # retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp.json"
-    retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp_batch.json"
+    retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp.json"
+    # retarget_data_path = "data/configs/retarget_cmu_fbx_to_amp_batch.json"
     with open(retarget_data_path) as f:
         retarget_data = json.load(f)
 
